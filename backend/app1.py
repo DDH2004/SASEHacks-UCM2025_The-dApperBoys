@@ -4,12 +4,12 @@ app.py
 
 1) Sign Up:
    - Generate a new wallet and random password.
-   - Save wallet_file + password_hash into wallets_db.json via wallet_manager.add_wallet()
+   - Save wallet_file and password hash into wallets_db.json via wallet_manager.add_wallet().
 
 2) Sign In:
-   - Prompt for public key + password.
-   - Lookup wallet_file & password_hash via wallet_manager.get_wallet_info().
-   - If password matches, load the secret key from wallet_file and mint a token.
+   - Prompt for public key and password.
+   - Retrieve the stored wallet info via wallet_manager.get_wallet_info().
+   - If authentication is successful, display the wallet info and mint a token.
 """
 
 import json
@@ -25,11 +25,9 @@ from solana.rpc.commitment import Confirmed
 from solana.rpc.types import TxOpts
 from solders.pubkey import Pubkey
 
-# Path to your mint authority's keypair file (the one that can mint)
-MINT_AUTHORITY_FILE = "/Users/lalkattil/my-solana-wallet.json"
-# The SPL token mint address you created earlier
-MINT_ADDRESS = "CzMUHT5wpcF331PyEvquERyrMeEnTXLQxQyKirPvnNo2"
-# Local validator RPC URL
+# Configuration constants
+MINT_AUTHORITY_FILE = "/Users/lalkattil/my-solana-wallet.json"  # Your mint authority keypair file
+MINT_ADDRESS = "CzMUHT5wpcF331PyEvquERyrMeEnTXLQxQyKirPvnNo2"     # Your token mint address
 LOCAL_RPC = "http://127.0.0.1:8899"
 
 def generate_random_password(length: int = 16) -> str:
@@ -42,22 +40,22 @@ def load_keypair_from_file(filepath: str) -> Keypair:
 
 def mint_token_to_wallet(pubkey_str: str) -> str:
     """
-    Mint 1 token to the given wallet (identified by its public key string).
+    Mint 1 token to the given wallet (identified by its public key string) and return the transaction signature.
     """
-    # 1) Read DB entry to get user's wallet file
+    # Retrieve wallet info from DB
     info = get_wallet_info(pubkey_str)
     wallet_file = info["wallet_file"]
 
-    # 2) Load the user's secret key
+    # Load the user's keypair from their wallet file
     user_kp = load_keypair_from_file(wallet_file)
 
-    # 3) Load mint authority keypair
+    # Load the mint authority keypair (used for minting tokens)
     mint_authority = load_keypair_from_file(MINT_AUTHORITY_FILE)
 
-    # 4) Connect to local validator
+    # Connect to the local validator
     client = Client(LOCAL_RPC)
 
-    # 5) Initialize the Token client
+    # Initialize the Token client for the given mint.
     token = Token(
         conn=client,
         pubkey=Pubkey.from_string(MINT_ADDRESS),
@@ -65,10 +63,10 @@ def mint_token_to_wallet(pubkey_str: str) -> str:
         payer=mint_authority,
     )
 
-    # 6) Get or create the user's associated token account
+    # Get or create the associated token account for the user.
     ata = token.create_account(Pubkey.from_string(pubkey_str))
 
-    # 7) Mint 1 token
+    # Mint 1 token to the user's token account.
     resp = token.mint_to(
         dest=ata,
         mint_authority=mint_authority,
@@ -79,35 +77,42 @@ def mint_token_to_wallet(pubkey_str: str) -> str:
 
 def main():
     print("=== User Sign Up ===")
-    # Generate wallet + password
+    # Generate a new wallet using walletGen.py's generate_wallet()
     wallet = generate_wallet()
     password = generate_random_password()
     wallet_file = f"wallet_{wallet.pubkey()}.json"
 
+    print("New wallet generated!")
     print("Public Key:", wallet.pubkey())
     print("Wallet file:", wallet_file)
     print("Assigned Password:", password)
 
-    # Persist secret key to file
+    # Save the wallet's secret key to a file
     with open(wallet_file, "w") as f:
         json.dump(list(wallet.to_bytes()), f)
 
-    # Store in DB
+    # Save the wallet info in the database using wallet_manager.add_wallet()
     add_wallet(str(wallet.pubkey()), wallet_file, password)
 
     print("\n=== User Sign In ===")
-    pubkey = input("Enter public key: ").strip()
-    pwd     = getpass.getpass("Enter password: ").strip()
+    input_pubkey = input("Enter your wallet public key: ").strip()
+    input_password = getpass.getpass("Enter your password: ").strip()
 
-    if not wallet_exists(pubkey):
+    if not wallet_exists(input_pubkey):
         print("Wallet not found.")
         return
-    if not verify_password(pubkey, pwd):
+    if not verify_password(input_pubkey, input_password):
         print("Incorrect password.")
         return
 
-    print("Sign in successful! Minting token...")
-    tx_sig = mint_token_to_wallet(pubkey)
+    print("Sign in successful!")
+
+    # Retrieve and print the wallet info from the database.
+    info = get_wallet_info(input_pubkey)
+    print("Wallet info from DB:", info)
+
+    print("Minting token...")
+    tx_sig = mint_token_to_wallet(input_pubkey)
     print("Mint tx signature:", tx_sig)
 
 if __name__ == "__main__":
