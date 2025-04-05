@@ -2,7 +2,7 @@
 """
 This script demonstrates how to:
   1. Connect to a local Solana test validator.
-  2. Load a wallet from a keypair JSON file (your new wallet).
+  2. Load a wallet from a keypair JSON file.
   3. Create a new SPL token mint.
   4. Create an associated token account for a user.
   5. Mint tokens to that user’s account.
@@ -19,6 +19,7 @@ from solders.keypair import Keypair
 from spl.token.client import Token
 from spl.token.constants import TOKEN_PROGRAM_ID
 from solana.rpc.commitment import Confirmed
+from solana.rpc.types import TxOpts
 from solana.exceptions import SolanaRpcException
 
 def load_keypair(filepath: str) -> Keypair:
@@ -37,7 +38,7 @@ def main():
         wallet_path = "/Users/lalkattil/my-solana-wallet.json"
         wallet = load_keypair(wallet_path)
         print("Loaded wallet. Public key:", wallet.pubkey())
-        # This should match: GeCGjHsrXeuGMpqCgbL5Mi3BxtNBeKxfaEAkTg29v3fA
+        # This wallet should match: GeCGjHsrXeuGMpqCgbL5Mi3BxtNBeKxfaEAkTg29v3fA
 
         # Use this wallet as the mint authority and fee payer.
         mint_authority = wallet
@@ -47,7 +48,7 @@ def main():
         print("Requesting airdrop for wallet...")
         airdrop_resp = client.request_airdrop(mint_authority.pubkey(), 10_000_000_000)  # 10 SOL in lamports
         if airdrop_resp.value is not None:
-            time.sleep(5)  # Wait for confirmation (in production, poll for confirmation)
+            time.sleep(5)  # Wait a few seconds for confirmation.
             balance_resp = client.get_balance(mint_authority.pubkey(), commitment=Confirmed)
             print("Airdrop complete. Balance:", balance_resp.value, "lamports")
         else:
@@ -77,7 +78,7 @@ def main():
             dest=user_token_account,
             mint_authority=mint_authority,
             amount=amount_to_mint,
-            opts=Confirmed,
+            opts=TxOpts(skip_preflight=False, preflight_commitment="confirmed"),
         )
         print(f"Minted {amount_to_mint} token(s) to user account {user_token_account}.")
         print("Transaction signature:", tx_signature)
