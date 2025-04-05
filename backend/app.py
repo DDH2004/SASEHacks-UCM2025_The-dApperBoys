@@ -4,10 +4,7 @@ import os
 from datetime import datetime
 import hashlib
 from solana.rpc.api import Client
-from solana.keypair import Keypair
-from solana.publickey import PublicKey
-from solana.system_program import TransferParams, transfer
-from solana.transaction import Transaction
+from solders.keypair import Keypair
 
 app = Flask(__name__)
 CORS(app)
