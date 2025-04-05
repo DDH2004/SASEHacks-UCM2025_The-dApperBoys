@@ -43,7 +43,7 @@ const Login: React.FC<LoginProps> = ({ setIsConnected, setWallet }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-950 to-black">
       <div className="bg-zinc-900 p-8 rounded-xl shadow-lg text-center">
-        <h1 className="text-2xl font-bold mb-4 text-white">Welcome to GreenProof</h1>
+        <h1 className="text-2xl font-bold mb-4 text-white">Welcome to dApp</h1>
         <p className="text-gray-300 mb-6">Connect your wallet to get started</p>
   
         {hasWallet ? (

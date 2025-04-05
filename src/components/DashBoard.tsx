@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import BarcodeScanner from './BarcodeScanner'; // make sure the path is correct
 
 interface DashboardProps {
   wallet: string;
@@ -6,6 +7,8 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
+  const [scannedCode, setScannedCode] = useState<string | null>(null);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 to-black text-white">
       <nav className="bg-zinc-900 shadow-lg">
@@ -32,7 +35,19 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
           <h2 className="text-2xl font-bold text-white mb-4">
             Submit Environmental Proof
           </h2>
-          {/* Your form or content goes here */}
+
+          <BarcodeScanner
+            onResult={(code) => {
+              console.log('Scanned:', code);
+              setScannedCode(code);
+            }}
+          />
+
+          {scannedCode && (
+            <div className="mt-6 text-green-400 text-lg">
+              ✅ Barcode scanned: <strong>{scannedCode}</strong>
+            </div>
+          )}
         </div>
       </main>
     </div>
