@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   BrowserMultiFormatReader,
 } from '@zxing/browser';
@@ -14,6 +14,7 @@ interface BarcodeScannerProps {
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onResult }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const stopRef = useRef<() => void>(() => {});
+  const [scannedText, setScannedText] = useState<string | null>(null);
 
   useEffect(() => {
     const hints = new Map();
@@ -29,11 +30,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onResult }) => {
     reader
       .decodeFromVideoDevice(undefined, videoRef.current!, (result, err, controls) => {
         if (result) {
-          console.log('✅ Scanned:', result.getText());
-          onResult(result.getText());
+          const text = result.getText();
+          console.log('✅ Scanned:', text);
+          setScannedText(text);
+          onResult(text);
         }
 
-        // Store stop function for cleanup
         stopRef.current = controls.stop;
       })
       .catch((err) => {
@@ -41,15 +43,35 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onResult }) => {
       });
 
     return () => {
-      // Cleanup on unmount
-      // stopRef.current?.();
+      stopRef.current?.();
     };
-    
   }, [onResult]);
 
   return (
-    <div className="rounded overflow-hidden border border-zinc-700">
-      <video ref={videoRef} className="w-full" />
+    <div className="flex flex-col md:flex-row gap-6 bg-zinc-900 p-6 rounded-lg shadow-lg">
+      {/* Left: Camera */}
+      <div className="flex-1">
+        <div className="border border-zinc-700 rounded-lg overflow-hidden shadow-sm">
+          <video ref={videoRef} className="w-full aspect-video rounded" />
+        </div>
+        <p className="text-sm text-gray-400 mt-2 text-center">
+          Aim your camera at a barcode or QR code
+        </p>
+      </div>
+
+      {/* Right: Scan result */}
+      <div className="flex-1 bg-zinc-800 p-4 rounded-lg border border-zinc-700">
+        <h3 className="text-lg font-semibold text-white mb-2">Last Scan</h3>
+        {scannedText ? (
+          <div className="bg-zinc-700 text-green-400 p-4 rounded shadow-inner">
+            ✅ <span className="font-mono">{scannedText}</span>
+          </div>
+        ) : (
+          <div className="text-gray-400 italic">
+            No barcode scanned yet.
+          </div>
+        )}
+      </div>
     </div>
   );
 };
