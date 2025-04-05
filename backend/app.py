@@ -5,6 +5,7 @@ from datetime import datetime
 import hashlib
 from solana.rpc.api import Client
 from solders.keypair import Keypair
+import openfoodfacts
 
 app = Flask(__name__)
 CORS(app)
@@ -12,6 +13,10 @@ CORS(app)
 # In-memory storage for demo purposes
 # In production, use a proper database
 submissions = []
+
+def off_api_handling(barcode_id):
+    api = openfoodfacts.API(user_agent="MyAwesomeApp/1.0")
+    api.product.get(barcode_id)
 
 @app.route('/api/submit', methods=['POST'])
 def submit_proof():
