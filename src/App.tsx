@@ -1,14 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { Leaf } from 'lucide-react';
-import { connection, submitProof } from './lib/solana';
+import React, { useState } from 'react';
+import Login from './components/Login';
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
-  const [wallet, setWallet] = useState(null);
+  const [wallet, setWallet] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Initialize wallet connection here
-  }, []);
+  if (!isConnected || !wallet) {
+    return <Login setIsConnected={setIsConnected} setWallet={setWallet} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
@@ -16,15 +15,20 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Leaf className="h-8 w-8 text-green-600" />
               <span className="ml-2 text-xl font-bold text-gray-900">GreenProof</span>
             </div>
             <div className="flex items-center">
+              <span className="text-gray-700 mr-4">
+                Wallet: {wallet.slice(0, 6)}...{wallet.slice(-4)}
+              </span>
               <button
                 className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-                onClick={() => {/* Handle wallet connection */}}
+                onClick={() => {
+                  setIsConnected(false);
+                  setWallet(null);
+                }}
               >
-                {isConnected ? 'Connected' : 'Connect Wallet'}
+                Disconnect
               </button>
             </div>
           </div>
