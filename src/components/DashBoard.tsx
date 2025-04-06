@@ -36,12 +36,7 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
             Submit Environmental Proof
           </h2>
 
-          <BarcodeScanner
-            onResult={(code) => {
-              console.log('Scanned:', code);
-              setScannedCode(code);
-            }}
-          />
+          <BarcodeScanner />
 
           {scannedCode && (
             <div className="mt-6 text-green-400 text-lg">
