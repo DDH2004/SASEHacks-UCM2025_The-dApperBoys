@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import BarcodeScanner from './BarcodeScanner';
 import AboutProduct from './AboutProduct';
 import DynamicGraph from './DynamicGraph';
 import UserBalance from './UserBalance';
+import PopUp from './PopUp';
 
 interface DashboardProps {
   wallet: string;
@@ -11,6 +12,32 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
   const [scannedCode, setScannedCode] = useState<string | null>(null);
+  const [points, setPoints] = useState<number | null>(null);
+  const [isModalVisible, setModalVisible] = useState(false);
+
+  // Fetch points for the wallet
+  const fetchPoints = async () => {
+    try {
+      const response = await fetch(`http://localhost:8888/wallet/${wallet}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setPoints(data.points || 0); // Set points from API response
+        setModalVisible(true); // Show modal
+      } else {
+        console.error('Error fetching wallet info:', data.error);
+      }
+    } catch (error) {
+      console.error('Error fetching wallet info:', error);
+    }
+  };
+
+  // Trigger point fetching when a barcode is scanned
+  useEffect(() => {
+    if (scannedCode) {
+      fetchPoints();
+    }
+  }, [scannedCode]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-1000 to-gray-900 text-white font-sans">
@@ -64,7 +91,14 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
           )}
 
           <DynamicGraph />
-       </div>
+        </div>
+
+        {/* Modal Pop-Up */}
+        <PopUp
+          isVisible={isModalVisible}
+          onClose={() => setModalVisible(false)}
+          points={points}
+        />
       </main>
     </div>
   );

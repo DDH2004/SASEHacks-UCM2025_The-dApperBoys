@@ -33,7 +33,7 @@ const DynamicGraph: React.FC = () => {
           <input
             type="number"
             step="0.1"
-            className="ml-2 px-3 py-1 rounded-md bg-zinc-800 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="ml-2 px-3 py-1 rounded-md bg-zinc-800 text-white border border-zinc-600 focus:outline-none focus:ring-2 focus:ring-green-500"
             onChange={handleZChange}
             placeholder="Enter z value"
           />

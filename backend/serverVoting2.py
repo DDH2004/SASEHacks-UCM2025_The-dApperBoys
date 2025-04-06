@@ -82,6 +82,9 @@ def validate_and_award():
     prod = fetch_product(barcode)
     if not prod:
         return jsonify({"error": "invalid barcode"}), 400
+    
+    if "image" not in files:
+        return jsonify({"error": "Missing image"}), 400
 
     # Read image bytes and compute its SHA256 hash
     img_bytes = files["image"].read()
@@ -105,6 +108,7 @@ def validate_and_award():
 
 @app.route("/wallet/<pubkey>", methods=["GET"])
 def wallet_info(pubkey):
+    # Comment out the existing logic
     if not wallet_exists(pubkey):
         return jsonify({"error": "wallet not found"}), 404
     info = get_wallet_info(pubkey)
@@ -113,6 +117,16 @@ def wallet_info(pubkey):
         "points": info.get("points", 0),
         "reward_balance": get_reward_balance(pubkey)
     })
+
+    # Example response for testing
+    # return jsonify({
+    #     "wallet_info": {
+    #         "pubkey": "DbF9bJhRDpteh9Q8nF13r4GiPN5m1eDfZp6rT4KFwyjC",
+    #         "points": 3
+    #     },
+    #     "points": 3,
+    #     "reward_balance": 0
+    # })
 
 @app.route("/distribute", methods=["GET"])
 def distribute_rewards():
