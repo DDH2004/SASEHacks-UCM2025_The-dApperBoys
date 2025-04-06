@@ -7,7 +7,11 @@ import {
   BarcodeFormat,
 } from '@zxing/library';
 
-const BarcodeScanner: React.FC = () => {
+interface BarcodeScannerProps {
+  onScan: (barcode: string) => void;
+}
+
+const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const stopRef = useRef<() => void>(() => {});
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -70,23 +74,22 @@ const BarcodeScanner: React.FC = () => {
 
     reader.decodeFromVideoDevice(undefined, videoRef.current!, async (result, err, controls) => {
       if (result && canScanRef.current) {
-        canScanRef.current = false; // 🔒 lock scanning
+        canScanRef.current = false;
         const barcode = result.getText();
-        console.log('✅ Scanned:', barcode);
+      
         setScannedBarcode(barcode);
-    
+        onScan(barcode); // 👈 send it to parent!
+      
         const image = captureImage();
         if (image) {
           setCapturedImage(image);
           await sendProof(barcode, image);
         }
-    
-        // 1 second cooldown before allowing next scan
+      
         setTimeout(() => {
           canScanRef.current = true;
         }, 1000);
       }
-    
       stopRef.current = controls.stop;
     });
     

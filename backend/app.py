@@ -5,10 +5,10 @@ import uuid
 import hashlib
 import base58
 from datetime import datetime
-from solana.rpc.api import Client
-from solders.keypair import Keypair
-from solders.pubkey import Pubkey
-from solana.transaction import Transaction
+# from solana.rpc.api import Client
+# from solders.keypair import Keypair
+# from solders.pubkey import Pubkey
+# from solana.transaction import Transaction
 import openfoodfacts
 
 app = Flask(__name__)
