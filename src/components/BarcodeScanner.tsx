@@ -104,7 +104,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, walletId }) => 
 
   return (
     <div className="space-y-4">
-      <div className="rounded overflow-hidden border border-zinc-700">
+      <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 border border-green-500/30 hover:shadow-green-400/40 hover:border-green-400 transition-all duration-300 shadow-lg backdrop-blur-md">
         <video ref={videoRef} className="w-full aspect-video" />
       </div>
 

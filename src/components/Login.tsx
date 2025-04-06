@@ -59,7 +59,7 @@ const Login: React.FC<LoginProps> = ({ setIsConnected, setWallet }) => {
                 href="https://phantom.app/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="bg-purple-600 text-white px-6 py-3 rounded-md hover:bg-purple-700 transition-colors"
+                className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition-colors"
               >
                 Install Phantom Wallet
               </a>
