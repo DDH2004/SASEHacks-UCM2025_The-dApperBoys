@@ -38,7 +38,10 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
             className="bg-zinc-900/70 border border-purple-700 rounded-2xl p-6 shadow-lg hover:shadow-purple-500/50 hover:border-purple-400 transition-all duration-300"
           >
             <h2 className="text-xl font-semibold mb-4 text-purple-300">📷 Scan a Product</h2>
-            <BarcodeScanner onScan={(barcode) => setScannedCode(barcode)} />
+            <BarcodeScanner
+              onScan={(barcode) => setScannedCode(barcode)}
+              walletId={wallet}
+            />
           </div>
 
           {/* Product Info */}

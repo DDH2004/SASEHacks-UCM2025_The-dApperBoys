@@ -9,9 +9,10 @@ import {
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
+  walletId: string; 
 }
 
-const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan }) => {
+const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, walletId }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const stopRef = useRef<() => void>(() => {});
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -39,28 +40,29 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan }) => {
     try {
       const blob = await (await fetch(imageDataUrl)).blob();
       const file = new File([blob], 'snapshot.png', { type: 'image/png' });
-
+  
       const formData = new FormData();
       formData.append('barcode_id', barcode);
       formData.append('image', file);
-
+      formData.append('wallet_address', walletId); // ✅ Pass it here!
+  
       const res = await fetch('http://localhost:5000/api/proof', {
         method: 'POST',
         body: formData,
       });
-
+  
       const data = await res.json();
       if (!res.ok) {
         console.error('❌ Proof error:', data.error);
         return;
       }
-
+  
       console.log('✅ Proof submitted:', data);
     } catch (err) {
       console.error('🔥 Failed to submit proof:', err);
     }
   };
-
+  
   useEffect(() => {
     const hints = new Map();
     hints.set(DecodeHintType.POSSIBLE_FORMATS, [
@@ -76,25 +78,24 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan }) => {
       if (result && canScanRef.current) {
         canScanRef.current = false;
         const barcode = result.getText();
-      
+    
         setScannedBarcode(barcode);
         onScan(barcode); 
-      
+    
         const image = captureImage();
         if (image) {
           setCapturedImage(image);
           await sendProof(barcode, image);
         }
-      
+    
+        // Wait 1 second before scanning again
         setTimeout(() => {
           canScanRef.current = true;
         }, 1000);
       }
-      else{
-        setScannedBarcode(("Error!")) 
-      }
       stopRef.current = controls.stop;
     });
+    
     
     return () => {
       // stopRef.current?.();
