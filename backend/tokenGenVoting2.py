@@ -9,7 +9,7 @@ from wallet_manager_voting2 import load_keypair_from_db
 # Configuration
 LOCAL_RPC = "http://127.0.0.1:8899"
 # Authority keypair stored in Mongo (must be upserted via your authority setup)
-MINT_AUTH_PUBKEY = "GckMqwD5e17U2tadgLm5TDsG6x41CpJdVhZkTSijtw1y"
+MINT_AUTH_PUBKEY = "F7bcyQmc6WCinDdF1eLN81qJbW88wUb1N9zJP9WHEt9B"
 # Reward token mint address (created with spl-token create-token)
 REWARD_MINT = "F7bcyQmc6WCinDdF1eLN81qJbW88wUb1N9zJP9WHEt9B"
 
