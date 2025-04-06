@@ -27,16 +27,46 @@ const AboutProduct: React.FC<AboutProductProps> = ({ barcode }) => {
     fetchProduct();
   }, [barcode]);
 
-  if (!productInfo) return <p className="text-gray-400">Looking up product info...</p>;
+  if (!productInfo) {
+    return (
+      <div className="text-gray-400 text-center italic animate-pulse">
+        Looking up product info...
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-zinc-800 p-4 rounded-lg shadow border border-zinc-700 text-white">
-      <h2 className="text-xl font-semibold mb-2">About This Product</h2>
-      <p><strong>Name:</strong> {productInfo.product_name ?? 'Unknown'}</p>
-      <p><strong>Carbon Footprint:</strong> {productInfo['carbon-footprint_100g'] ?? 'N/A'} g CO₂/100g</p>
-      <p><strong>Packaging:</strong> {productInfo.packaging ?? 'Unknown'}</p>
-      <p><strong>Weight:</strong> {productInfo.product_quantity ?? productInfo.quantity ?? 'N/A'}</p>
-      <p><strong>Brands:</strong> {productInfo.brands ?? 'Unknown'}</p>
+    <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 border border-teal-500/30 hover:shadow-teal-400/40 hover:border-teal-400 transition-all duration-300 shadow-lg backdrop-blur-md">
+      <h2 className="text-2xl font-bold text-teal-300 mb-4">📦 Product Details</h2>
+
+      <ul className="space-y-3 text-sm text-zinc-300 font-medium">
+        <li>
+          <span className="text-teal-400 font-semibold">Name:</span>{' '}
+          {productInfo.product_name ?? <span className="text-zinc-500 italic">Unknown</span>}
+        </li>
+        <li>
+          <span className="text-teal-400 font-semibold">Packaging:</span>{' '}
+          {productInfo.packaging ?? <span className="text-zinc-500 italic">Unknown</span>}
+        </li>
+        <li>
+          <span className="text-teal-400 font-semibold">Weight:</span>{' '}
+          {productInfo.product_quantity ?? productInfo.quantity ?? <span className="text-zinc-500 italic">N/A</span>}
+        </li>
+        <li>
+          <span className="text-teal-400 font-semibold">Brands:</span>{' '}
+          {productInfo.brands ?? <span className="text-zinc-500 italic">Unknown</span>}
+        </li>
+      </ul>
+
+      {productInfo.image_url && (
+        <div className="mt-6">
+          <img
+            src={productInfo.image_url}
+            alt="Product"
+            className="rounded-lg shadow-md border border-zinc-700 max-h-48 mx-auto"
+          />
+        </div>
+      )}
     </div>
   );
 };
