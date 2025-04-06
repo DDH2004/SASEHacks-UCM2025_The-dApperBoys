@@ -11,46 +11,48 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
   const [scannedCode, setScannedCode] = useState<string | null>(null);
-  const [points, setPoints] = useState<number | null>(null);
+  const [pointsAwarded, setPointsAwarded] = useState<number | null>(null);
   const [tokens, setTokens] = useState<number | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);
 
-  // Fetch points for the wallet
-  const fetchPoints = async () => {
+  // Handle barcode scanning and API calls
+  const handleScan = async (barcode: string) => {
+    setScannedCode(barcode);
+    
     try {
-      const response = await fetch(`http://localhost:8888/wallet/${wallet}`);
-      const data = await response.json();
+      // Call /api/validate endpoint
+      const formData = new FormData();
+      formData.append("barcode_id", barcode);
+      formData.append("pubkey", wallet);
 
-      if (response.ok) {
-        const formData = new FormData();
-        formData.append("barcode_id", scannedCode?.toString() || "0");
-        formData.append("pubkey", wallet);
+      const validateResponse = await fetch(`http://localhost:8888/api/validate`, {
+        method: "POST",
+        body: formData,
+      });
 
-        const vResponse = await fetch(`http://localhost:8888/api/validate`, {
-          method: "POST",
-          body: formData,
-        });
-        const vData = await response.json();
+      if (!validateResponse.ok) {
+        const errorData = await validateResponse.json();
+        console.error('Validation failed:', errorData.error);
+        return;
+      }
 
-        if (vResponse.ok){
-          setPoints(vData.points_awarded || 0); // Set points from API response
-          setTokens(data.reward_balance || 0);
-          setModalVisible(true); // Show modal
-        }
-      } else {
-        console.error('Error fetching wallet info:', data.error);
+      const validateData = await validateResponse.json();
+      
+      // Update points from validate response
+      setPointsAwarded(validateData.points_awarded);
+
+      // Fetch updated wallet info
+      const walletResponse = await fetch(`http://localhost:8888/wallet/${wallet}`);
+      const walletData = await walletResponse.json();
+      
+      if (walletResponse.ok) {
+        setTokens(walletData.reward_balance);
+        setModalVisible(true);
       }
     } catch (error) {
-      console.error('Error fetching wallet info:', error);
+      console.error('API Error:', error);
     }
   };
-
-  // Trigger point fetching when a barcode is scanned
-  useEffect(() => {
-    if (scannedCode) {
-      fetchPoints();
-    }
-  }, [scannedCode]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-1000 to-gray-900 text-white font-sans">
@@ -76,21 +78,17 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
       <main className="max-w-7xl mx-auto px-6 sm:px-10 py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Scanner */}
-          <div
-            className="bg-zinc-900/70 border border-green-700 rounded-2xl p-6 shadow-lg hover:shadow-green-500/50 hover:border-green-400 transition-all duration-300"
-          >
+          <div className="bg-zinc-900/70 border border-green-700 rounded-2xl p-6 shadow-lg hover:shadow-green-500/50 hover:border-green-400 transition-all duration-300">
             <h2 className="text-xl font-semibold mb-4 text-green-400">📷 Scan a Product</h2>
-            <BarcodeScanner
-              onScan={(barcode) => setScannedCode(barcode)}
+            <BarcodeScanner 
+              onScan={handleScan} 
               walletId={wallet}
             />
           </div>
 
           {/* Product Info */}
           {scannedCode ? (
-            <div
-              className="bg-zinc-900/70 border border-green-600 rounded-2xl p-6 shadow-lg hover:shadow-green-400/40 hover:border-green-300 transition-all duration-300"
-            >
+            <div className="bg-zinc-900/70 border border-green-600 rounded-2xl p-6 shadow-lg hover:shadow-green-400/40 hover:border-green-300 transition-all duration-300">
               <h2 className="text-xl font-semibold mb-4 text-green-400">Product Info</h2>
               <AboutProduct barcode={scannedCode} />
             </div>
@@ -103,11 +101,11 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
           <DynamicGraph />
         </div>
 
-        {/* Modal Pop-Up */}
+        {/* Points Awarded Pop-Up */}
         <PopUp
           isVisible={isModalVisible}
           onClose={() => setModalVisible(false)}
-          points={points}
+          points={pointsAwarded}
           tokens={tokens}
         />
       </main>
