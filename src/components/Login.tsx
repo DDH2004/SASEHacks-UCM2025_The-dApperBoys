@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import WebGLBackground from './WebGLBackground';
 
 interface LoginProps {
   setIsConnected: (value: boolean) => void;
@@ -29,10 +30,6 @@ const Login: React.FC<LoginProps> = ({ setIsConnected, setWallet }) => {
       const res = await provider.connect(); // ← this triggers the popup
       const walletAddress = res.publicKey.toString();
 
-      // Optional: sign a message here for verification
-      // const message = `Sign in at ${new Date().toISOString()}`;
-      // const signed = await provider.signMessage(new TextEncoder().encode(message), 'utf8');
-
       setWallet(walletAddress);
       setIsConnected(true);
     } catch (err) {
@@ -41,26 +38,41 @@ const Login: React.FC<LoginProps> = ({ setIsConnected, setWallet }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-950 to-black">
-      <div className="bg-zinc-900 p-8 rounded-xl shadow-lg text-center">
-        <h1 className="text-2xl font-bold mb-4 text-white">Welcome to dApp</h1>
-        <p className="text-gray-300 mb-6">Connect your wallet to get started</p>
-  
-        {hasWallet ? (
-          <button
-            onClick={connectWallet}
-            className="bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600 transition-colors"
-          >
-            Sign in with Phantom Wallet
-          </button>
-        ) : (
-          <p className="text-red-400 font-medium">
-            Phantom Wallet not detected. Please install it.
+    <>
+      <WebGLBackground />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-zinc-900/80 backdrop-blur-md p-8 rounded-xl shadow-lg text-center z-10">
+          <h1 className="text-3xl font-bold mb-4 text-white">GreenRewards</h1>
+          <p className="text-gray-300 mb-6">Connect your wallet to start earning rewards for recycling</p>
+    
+          {hasWallet ? (
+            <button
+              onClick={connectWallet}
+              className="bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600 transition-colors"
+            >
+              Sign in with Phantom Wallet
+            </button>
+          ) : (
+            <div className="text-red-400 font-medium">
+              <p className="mb-3">Phantom Wallet not detected</p>
+              <a 
+                href="https://phantom.app/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-purple-600 text-white px-6 py-3 rounded-md hover:bg-purple-700 transition-colors"
+              >
+                Install Phantom Wallet
+              </a>
+            </div>
+          )}
+          
+          <p className="mt-4 text-sm text-gray-400">
+            Earning tokens for sustainable choices
           </p>
-        )}
+        </div>
       </div>
-    </div>
+    </>
   );
-  
 };
+
 export default Login;
