@@ -250,7 +250,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Text('Scan Result:', style: Theme.of(context).textTheme.headlineSmall),
                   if (image != null)
                     SizedBox(
-                      width: 240, // Fixed width
+                      width: 300, // Fixed width
                       height: 300, // Fixed height
                       child: Image.file(
                         File(image!.path),
