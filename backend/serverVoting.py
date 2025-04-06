@@ -99,43 +99,35 @@ def distribute_rewards():
     auth = load_authority()
     client = Client("http://127.0.0.1:8899")
 
-    mint_pubkey = Pubkey.from_string(PRIMARY_MINT)
-
-    # Query all token accounts with this mint
+    # Use base64 encoding to avoid JSON decoding issues
     resp = client.get_program_accounts(
-    TOKEN_PROGRAM_ID,
-    encoding="base64",  # <- this avoids JSON decoding errors
-    filters=[
-        MemcmpOpts(offset=0, bytes=str(mint_pubkey))
-    ]
-)
-
-
-
+        TOKEN_PROGRAM_ID,
+        encoding="base64",  # <- avoids SerdeJSONError
+        filters=[
+            MemcmpOpts(offset=0, bytes=PRIMARY_MINT)
+        ]
+    )
 
     holders = {}
     total_votes = 0
 
+    # Step through each account and check token balance + owner
     for acct in resp.value:
-        parsed_data = acct.account.data  # This is a tuple: (data, encoding)
-    
-    if isinstance(parsed_data, tuple) and parsed_data[1] == "jsonParsed":
-        info = parsed_data[0]["parsed"]["info"]
-        owner = info["owner"]
-        amount = int(info["tokenAmount"]["amount"])
+        account_pubkey = acct.pubkey
+        bal_resp = client.get_token_account_balance(account_pubkey)
+        info_resp = client.get_account_info(account_pubkey)
+
+        amount = int(bal_resp.value.amount)
+        owner = str(info_resp.value.owner)
 
         if amount > 0:
             holders[owner] = holders.get(owner, 0) + amount
             total_votes += amount
-    else:
-        print("⚠️ Skipping account with unexpected data format")
-
-
 
     if total_votes == 0:
         return jsonify({"error": "no holders"}), 400
 
-    # Calculate each holder's share
+    # Proportional reward calculation
     distribution = {}
     tokens_left = 100
     for owner, votes in holders.items():
@@ -151,7 +143,7 @@ def distribute_rewards():
         tokens_left -= 1
         idx += 1
 
-    # Mint the reward tokens
+    # Mint rewards
     reward_token = Token(
         conn=client,
         pubkey=Pubkey.from_string(REWARD_MINT),
@@ -161,14 +153,21 @@ def distribute_rewards():
 
     tx_results = {}
     for owner, amt in distribution.items():
-        ata = reward_token.get_or_create_associated_account_info(Pubkey.from_string(owner))
-        reward_token.mint_to(ata.address, auth, amt)
+        owner_pubkey = Pubkey.from_string(owner)
+        try:
+            ata = reward_token.create_associated_token_account(owner_pubkey)
+        except Exception:
+            ata = reward_token.get_associated_token_address(owner_pubkey)
+        reward_token.mint_to(ata, auth, amt)
         tx_results[owner] = amt
+
 
     return jsonify({
         "distribution": tx_results,
         "reward_mint": REWARD_MINT
     })
+
+
 
 
 
