@@ -44,7 +44,7 @@ const UserBalance: React.FC<UserBalanceProps> = ({ walletAddress }) => {
         
       } catch (err) {
         console.error('Error fetching balance data:', err);
-        setError(`Failed to load your balance: ${err.message}`);
+        setError(`Failed to load your balance: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
         setLoading(false);
       }
