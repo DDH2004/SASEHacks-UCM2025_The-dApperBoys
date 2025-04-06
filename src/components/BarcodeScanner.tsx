@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   BrowserMultiFormatReader,
 } from '@zxing/browser';
@@ -7,13 +7,52 @@ import {
   BarcodeFormat,
 } from '@zxing/library';
 
-interface BarcodeScannerProps {
-  onResult: (result: string) => void;
-}
-
-const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onResult }) => {
+const BarcodeScanner: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const stopRef = useRef<() => void>(() => {});
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
+
+  const captureImage = (): string | null => {
+    const video = videoRef.current;
+    if (!video) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  };
+
+  const sendProof = async (barcode: string, imageDataUrl: string) => {
+    try {
+      const blob = await (await fetch(imageDataUrl)).blob();
+      const file = new File([blob], 'snapshot.png', { type: 'image/png' });
+
+      const formData = new FormData();
+      formData.append('barcode_id', barcode);
+      formData.append('image', file);
+
+      const res = await fetch('http://localhost:5000/api/proof', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('❌ Proof error:', data.error);
+        return;
+      }
+
+      console.log('✅ Proof submitted:', data);
+    } catch (err) {
+      console.error('🔥 Failed to submit proof:', err);
+    }
+  };
 
   useEffect(() => {
     const hints = new Map();
@@ -27,13 +66,19 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onResult }) => {
     const reader = new BrowserMultiFormatReader(hints);
 
     reader
-      .decodeFromVideoDevice(undefined, videoRef.current!, (result, err, controls) => {
+      .decodeFromVideoDevice(undefined, videoRef.current!, async (result, err, controls) => {
         if (result) {
-          console.log('✅ Scanned:', result.getText());
-          onResult(result.getText());
+          const barcode = result.getText();
+          console.log('✅ Scanned:', barcode);
+          setScannedBarcode(barcode);
+
+          const image = captureImage();
+          if (image) {
+            setCapturedImage(image);
+            await sendProof(barcode, image);
+          }
         }
 
-        // Store stop function for cleanup
         stopRef.current = controls.stop;
       })
       .catch((err) => {
@@ -41,15 +86,28 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onResult }) => {
       });
 
     return () => {
-      // Cleanup on unmount
       // stopRef.current?.();
     };
-    
-  }, [onResult]);
+  }, []);
 
   return (
-    <div className="rounded overflow-hidden border border-zinc-700">
-      <video ref={videoRef} className="w-full" />
+    <div className="space-y-4">
+      <div className="rounded overflow-hidden border border-zinc-700">
+        <video ref={videoRef} className="w-full aspect-video" />
+      </div>
+
+      {scannedBarcode && (
+        <div className="text-green-400 text-center font-mono text-lg">
+          ✅ Barcode: <strong>{scannedBarcode}</strong>
+        </div>
+      )}
+
+      {capturedImage && (
+        <div className="rounded border border-green-600 overflow-hidden max-w-full">
+          <img src={capturedImage} alt="Scanned Snapshot" className="w-full" />
+          <p className="text-sm text-gray-400 mt-2 text-center">📸 Snapshot captured at scan</p>
+        </div>
+      )}
     </div>
   );
 };

@@ -3,6 +3,10 @@ from flask_cors import CORS
 import os
 from datetime import datetime
 import hashlib
+from solana.rpc.api import Client
+from solders.keypair import Keypair
+import openfoodfacts
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -11,59 +15,43 @@ CORS(app)
 # In production, use a proper database
 submissions = []
 
-@app.route('/api/submit', methods=['POST'])
-def submit_proof():
+def barcode_handling(barcode_id):
     """
-    Submit a new environmental action proof
-    Expected payload:
-    {
-        "barcode": "123456789",
-        "image_hash": "perceptual_hash_here",
-        "wallet_address": "solana_wallet_address",
-        "location": {"lat": 123.45, "lng": 67.89},
-        "timestamp": "2024-03-14T12:00:00Z"
-    }
+    Create a submission hash for the blockchain
     """
-    try:
-        data = request.json
-        
-        # Basic validation
-        required_fields = ['barcode', 'wallet_address', 'location', 'timestamp']
-        if not all(field in data for field in required_fields):
-            return jsonify({'error': 'Missing required fields'}), 400
-        
-        # Generate unique submission ID
-        submission_id = hashlib.sha256(
-            f"{data['barcode']}{data['wallet_address']}{data['timestamp']}".encode()
+    api = openfoodfacts.API(user_agent="MyAwesomeApp/1.0")
+    product = api.product.get(barcode_id)
+    name = product.get('product_name', 'idk random carbs ig')
+    score = product.get('ecoscore_data', 0).get('adjustments', 0).get('packaging', 0).get('value', 0)
+    # score_str = str(score)
+    submission_id = hashlib.sha256(
+            f"{name}{score}{datetime.now()}".encode()
         ).hexdigest()
-        
-        # Check for duplicates
-        if any(s['id'] == submission_id for s in submissions):
-            return jsonify({'error': 'Duplicate submission'}), 409
-        
-        # Store submission
-        submission = {
-            'id': submission_id,
-            **data,
-            'verified': False,
-            'processed_at': datetime.utcnow().isoformat()
-        }
-        submissions.append(submission)
-        
+    return submission_id
+
+@app.route('/api/proof', methods=['POST'])
+def receive_proof():
+    try:
+        if 'barcode_id' not in request.form or 'image' not in request.files:
+            return jsonify({'error': 'Missing barcode_id or image'}), 400
+
+        barcode_id = request.form['barcode_id']
+        image_file = request.files['image']
+        image_data = image_file.read()
+        image_hash = hashlib.sha256(image_data).hexdigest()
+
+        print("✅ Received barcode:", barcode_id)
+        print("🔐 Image hash:", image_hash)
+
         return jsonify({
             'status': 'success',
-            'submission_id': submission_id,
-            'message': 'Proof submitted successfully'
-        }), 201
-        
+            'message': 'Proof received',
+            'barcode': barcode_id,
+            'image_hash': image_hash
+        }), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-@app.route('/api/submissions/<wallet_address>', methods=['GET'])
-def get_submissions(wallet_address):
-    """Get all submissions for a specific wallet address"""
-    user_submissions = [s for s in submissions if s['wallet_address'] == wallet_address]
-    return jsonify(user_submissions)
 
 if __name__ == '__main__':
     app.run(debug=True)
