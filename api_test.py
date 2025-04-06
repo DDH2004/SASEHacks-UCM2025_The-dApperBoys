@@ -16,6 +16,17 @@ def main():
         print(f"Categories: {product.get('categories', 'N/A')}")
         print(f"Ingredients: {product.get('ingredients_text', 'N/A')}")
         print(f"Packaging: {product.get('ecoscore_data', 'N/A').get('adjustments', 'N/A').get('packaging', 'N/A')}")
+        stuff = product.get('ecoscore_data', 'N/A').get('adjustments', 'N/A').get('packaging', 'N/A')
+        print(stuff)
+        if isinstance(stuff, dict):
+            print("Packaging adjustments:")
+            for key, value in stuff.items():
+                print(f"  {key}: {value}")
+        else:
+            print("No packaging adjustments found.")
+        score_value = stuff['value']
+        print(score_value)
+        print(stuff.get('value', 'N/A'))
     else:
         print("Product not found.")
 
