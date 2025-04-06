@@ -144,5 +144,32 @@ def distribute_rewards():
         "txs": txs
     })
 
+RPC_URL = "http://127.0.0.1:8899"
+from solders.pubkey import Pubkey
+from solana.rpc.api import Client
+
+@app.route("/total", methods=["GET"])
+def total_supply():
+    """
+    Return the total minted supply of the reward token.
+    """
+    client = Client(RPC_URL)
+    resp = client.get_token_supply(Pubkey.from_string(REWARD_MINT))
+    if not resp or not resp.value:
+        return jsonify({"error": "could not fetch supply"}), 500
+
+    # amount is a string, decimals is an int
+    amount = int(resp.value.amount)
+    decimals = resp.value.decimals
+
+    # present a human‑readable value
+    human = amount / (10 ** decimals)
+    return jsonify({
+        "mint": REWARD_MINT,
+        "amount_raw": amount,
+        "decimals": decimals,
+        "amount": human
+    })
+
 if __name__ == "__main__":
     app.run(port=8888, debug=True)
