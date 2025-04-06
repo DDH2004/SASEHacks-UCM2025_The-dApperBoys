@@ -12,6 +12,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const [points, setPoints] = useState<number | null>(null);
+  const [tokens, setTokens] = useState<number | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);
 
   // Fetch points for the wallet
@@ -21,8 +22,21 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
       const data = await response.json();
 
       if (response.ok) {
-        setPoints(data.points || 0); // Set points from API response
-        setModalVisible(true); // Show modal
+        const formData = new FormData();
+        formData.append("barcode_id", scannedCode?.toString() || "0");
+        formData.append("pubkey", wallet);
+
+        const vResponse = await fetch(`http://localhost:8888/api/validate`, {
+          method: "POST",
+          body: formData,
+        });
+        const vData = await response.json();
+
+        if (vResponse.ok){
+          setPoints(vData.points_awarded || 0); // Set points from API response
+          setTokens(data.reward_balance || 0);
+          setModalVisible(true); // Show modal
+        }
       } else {
         console.error('Error fetching wallet info:', data.error);
       }
