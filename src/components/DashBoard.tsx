@@ -108,6 +108,7 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
           isVisible={isModalVisible}
           onClose={() => setModalVisible(false)}
           points={points}
+          tokens={tokens}
         />
       </main>
     </div>

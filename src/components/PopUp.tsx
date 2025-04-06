@@ -4,9 +4,10 @@ interface PopUpProps {
   isVisible: boolean;
   onClose: () => void;
   points: number | null;
+  tokens: number | null;
 }
 
-const PopUp: React.FC<PopUpProps> = ({ isVisible, onClose, points }) => {
+const PopUp: React.FC<PopUpProps> = ({ isVisible, onClose, points, tokens }) => {
   const [progress, setProgress] = useState(100); // Progress starts at 100%
 
   useEffect(() => {
@@ -36,7 +37,7 @@ const PopUp: React.FC<PopUpProps> = ({ isVisible, onClose, points }) => {
         <h3 className="text-lg font-bold">Points Awarded</h3>
       </div>
       <p className="mt-2 text-sm">
-        Your wallet has accumulated <span className="font-bold">{points}</span> points!
+        Your wallet has accumulated <span className="font-bold">{points}</span> points and <span className="font-bold">{tokens}</span> tokens!
       </p>
       {/* Progress Bar */}
       <div className="relative w-full h-2 bg-gray-600 rounded-full mt-4 overflow-hidden">
