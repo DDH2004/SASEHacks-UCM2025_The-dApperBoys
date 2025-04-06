@@ -26,8 +26,7 @@ from tokenGenVoting2 import mint_reward, get_reward_balance, REWARD_MINT
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/api/proof", methods=["POST"])
-def proof(barcode_id):
+def fetch_product(barcode_id):
     url = f"https://world.openfoodfacts.org/api/v0/product/{barcode_id}.json"
     r = requests.get(url, timeout=5)
     if r.status_code != 200:
@@ -80,7 +79,7 @@ def validate_and_award():
     if not verify_password(pk, pw):
         return jsonify({"error": "invalid credentials"}), 403
 
-    prod = proof(barcode)
+    prod = fetch_product(barcode)
     if not prod:
         return jsonify({"error": "invalid barcode"}), 400
 
