@@ -1,119 +1,139 @@
 #!/usr/bin/env python3
 """
-app.py
+server.py
 
-1) Sign Up:
-   - Generate a new wallet and random password.
-   - Save wallet_file and password hash into wallets_db.json via wallet_manager.add_wallet().
+Flask server providing endpoints for:
+  • POST   /signup           — generate a new user wallet and password (no mint)
+  • POST   /signin           — authenticate and return wallet info & balances (no mint)
+  • POST   /api/validate     — validate a barcode/image proof and mint 1 SPL token
+  • GET    /wallet/<pubkey>  — retrieve stored wallet info and balances
 
-2) Sign In:
-   - Prompt for public key and password.
-   - Retrieve the stored wallet info via wallet_manager.get_wallet_info().
-   - If authentication is successful, display the wallet info and mint a token.
+Dependencies:
+  pip install flask flask-cors solana spl-token solders openfoodfacts
 """
 
 import json
-import getpass
 import secrets
-from walletGen import generate_wallet
-from wallet_manager import add_wallet, wallet_exists, get_wallet_info, verify_password
+import hashlib
+from datetime import datetime
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
 from solana.rpc.api import Client
 from solders.keypair import Keypair
 from spl.token.client import Token
 from spl.token.constants import TOKEN_PROGRAM_ID
-from solana.rpc.commitment import Confirmed
 from solana.rpc.types import TxOpts
 from solders.pubkey import Pubkey
 
-# Configuration constants
-MINT_AUTHORITY_FILE = "/Users/lalkattil/my-solana-wallet.json"  # Your mint authority keypair file
-MINT_ADDRESS = "CzMUHT5wpcF331PyEvquERyrMeEnTXLQxQyKirPvnNo2"     # Your token mint address
-LOCAL_RPC = "http://127.0.0.1:8899"
+import openfoodfacts
 
-def generate_random_password(length: int = 16) -> str:
+from walletGen import generate_wallet
+from wallet_manager import add_wallet, wallet_exists, get_wallet_info, verify_password
+
+app = Flask(__name__)
+CORS(app)
+
+# Config
+LOCAL_RPC = "http://127.0.0.1:8899"
+MINT_AUTHORITY_FILE = "/Users/lalkattil/my-solana-wallet.json"
+MINT_ADDRESS = "CzMUHT5wpcF331PyEvquERyrMeEnTXLQxQyKirPvnNo2"
+
+def generate_random_password(length=16):
     return secrets.token_urlsafe(length)
 
-def load_keypair_from_file(filepath: str) -> Keypair:
-    with open(filepath, "r") as f:
+def load_keypair(path):
+    with open(path) as f:
         secret = json.load(f)
     return Keypair.from_bytes(bytes(secret))
 
-def mint_token_to_wallet(pubkey_str: str) -> str:
-    """
-    Mint 1 token to the given wallet (identified by its public key string) and return the transaction signature.
-    """
-    # Retrieve wallet info from DB
-    info = get_wallet_info(pubkey_str)
-    wallet_file = info["wallet_file"]
-
-    # Load the user's keypair from their wallet file
-    user_kp = load_keypair_from_file(wallet_file)
-
-    # Load the mint authority keypair (used for minting tokens)
-    mint_authority = load_keypair_from_file(MINT_AUTHORITY_FILE)
-
-    # Connect to the local validator
+def get_balances(pubkey_str):
     client = Client(LOCAL_RPC)
+    sol = client.get_balance(Pubkey.from_string(pubkey_str)).value
+    token_client = Token(
+        conn=client,
+        pubkey=Pubkey.from_string(MINT_ADDRESS),
+        program_id=TOKEN_PROGRAM_ID,
+        payer=load_keypair(MINT_AUTHORITY_FILE),
+    )
+    spl = 0
+    for acct in token_client.get_accounts_by_owner(Pubkey.from_string(pubkey_str)).value:
+        spl += int(client.get_token_account_balance(Pubkey.from_string(str(acct.pubkey))).value.amount)
+    return {"sol": sol, "spl": spl}
 
-    # Initialize the Token client for the given mint.
+def mint_spl(pubkey_str):
+    mint_auth = load_keypair(MINT_AUTHORITY_FILE)
+    client = Client(LOCAL_RPC)
     token = Token(
         conn=client,
         pubkey=Pubkey.from_string(MINT_ADDRESS),
         program_id=TOKEN_PROGRAM_ID,
-        payer=mint_authority,
+        payer=mint_auth,
     )
-
-    # Get or create the associated token account for the user.
     ata = token.create_account(Pubkey.from_string(pubkey_str))
-
-    # Mint 1 token to the user's token account.
-    resp = token.mint_to(
+    sig = token.mint_to(
         dest=ata,
-        mint_authority=mint_authority,
+        mint_authority=mint_auth,
         amount=1,
         opts=TxOpts(skip_preflight=False, preflight_commitment="confirmed"),
     )
-    return str(resp.value)
+    return str(sig.value)
 
-def main():
-    print("=== User Sign Up ===")
-    # Generate a new wallet using walletGen.py's generate_wallet()
-    wallet = generate_wallet()
-    password = generate_random_password()
-    wallet_file = f"wallet_{wallet.pubkey()}.json"
+def barcode_handling(barcode_id):
+    api = openfoodfacts.API(user_agent="MyApp/1.0")
+    prod = api.product.get(barcode_id) or {}
+    name = prod.get("product_name","unknown")
+    score = prod.get("ecoscore_data",{}).get("adjustments",{}).get("packaging",{}).get("value",0)
+    raw = f"{name}|{score}|{datetime.utcnow().isoformat()}"
+    return hashlib.sha256(raw.encode()).hexdigest()
 
-    print("New wallet generated!")
-    print("Public Key:", wallet.pubkey())
-    print("Wallet file:", wallet_file)
-    print("Assigned Password:", password)
+@app.route("/signup", methods=["POST"])
+def signup():
+    w = generate_wallet()
+    pwd = generate_random_password()
+    wf = f"wallet_{w.pubkey()}.json"
+    with open(wf,"w") as f: json.dump(list(w.to_bytes()), f)
+    add_wallet(str(w.pubkey()), wf, pwd)
+    return jsonify({"pubkey":str(w.pubkey()),"wallet_file":wf,"password":pwd})
 
-    # Save the wallet's secret key to a file
-    with open(wallet_file, "w") as f:
-        json.dump(list(wallet.to_bytes()), f)
+@app.route("/signin", methods=["POST"])
+def signin():
+    d = request.get_json() or {}
+    pk, pw = d.get("pubkey"), d.get("password")
+    if not pk or not pw: return jsonify({"error":"pubkey & password required"}),400
+    if not wallet_exists(pk): return jsonify({"error":"wallet not found"}),404
+    if not verify_password(pk,pw): return jsonify({"error":"invalid password"}),403
+    info = get_wallet_info(pk)
+    bal  = get_balances(pk)
+    return jsonify({"wallet_info":info,"balances":bal})
 
-    # Save the wallet info in the database using wallet_manager.add_wallet()
-    add_wallet(str(wallet.pubkey()), wallet_file, password)
+@app.route("/api/validate", methods=["POST"])
+def validate_and_mint():
+    f = request.form; files = request.files
+    for fld in ("barcode_id","pubkey","password"):
+        if fld not in f: return jsonify({"error":f"Missing {fld}"}),400
+    if "image" not in files: return jsonify({"error":"Missing image"}),400
+    b, pk, pw = f["barcode_id"], f["pubkey"], f["password"]
+    if not wallet_exists(pk): return jsonify({"error":"wallet not found"}),404
+    if not verify_password(pk,pw): return jsonify({"error":"invalid credentials"}),403
+    img_hash = hashlib.sha256(files["image"].read()).hexdigest()
+    sub_id   = barcode_handling(b)
+    mint_sig = mint_spl(pk)
+    bal      = get_balances(pk)
+    return jsonify({
+        "status":"success",
+        "barcode_id":b,
+        "image_hash":img_hash,
+        "submission_id":sub_id,
+        "balances":bal,
+        "mint_tx":mint_sig
+    })
 
-    print("\n=== User Sign In ===")
-    input_pubkey = input("Enter your wallet public key: ").strip()
-    input_password = getpass.getpass("Enter your password: ").strip()
+@app.route("/wallet/<pubkey>", methods=["GET"])
+def wallet_info(pubkey):
+    if not wallet_exists(pubkey): return jsonify({"error":"wallet not found"}),404
+    return jsonify({"wallet_info":get_wallet_info(pubkey),"balances":get_balances(pubkey)})
 
-    if not wallet_exists(input_pubkey):
-        print("Wallet not found.")
-        return
-    if not verify_password(input_pubkey, input_password):
-        print("Incorrect password.")
-        return
-
-    print("Sign in successful!")
-
-    # Retrieve and print the wallet info from the database.
-    info = get_wallet_info(input_pubkey)
-    print("Wallet info from DB:", info)
-
-    print("Minting token...")
-    tx_sig = mint_token_to_wallet(input_pubkey)
-    print("Mint tx signature:", tx_sig)
-
-if __name__ == "__main__":
-    main()
+if __name__=="__main__":
+    app.run(debug=True)
