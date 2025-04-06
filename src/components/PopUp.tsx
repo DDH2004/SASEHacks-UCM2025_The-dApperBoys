@@ -14,7 +14,7 @@ const PopUp: React.FC<PopUpProps> = ({ isVisible, onClose, points }) => {
       setProgress(100); // Reset progress when modal becomes visible
 
       const interval = setInterval(() => {
-        setProgress((prev) => Math.max(prev - 2, 0)); // Decrease progress by 2% every 100ms
+        setProgress((prev) => Math.max(prev - 2.1, 0)); // Decrease progress by 2% every 100ms
       }, 100);
 
       const timer = setTimeout(() => {
