@@ -39,7 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
           <div
             className="bg-zinc-900/70 border border-green-700 rounded-2xl p-6 shadow-lg hover:shadow-green-500/50 hover:border-green-400 transition-all duration-300"
           >
-            <h2 className="text-xl font-semibold mb-4 text-green-300">📷 Scan a Product</h2>
+            <h2 className="text-xl font-semibold mb-4 text-green-400">📷 Scan a Product</h2>
             <BarcodeScanner
               onScan={(barcode) => setScannedCode(barcode)}
               walletId={wallet}
@@ -49,9 +49,9 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
           {/* Product Info */}
           {scannedCode ? (
             <div
-              className="bg-zinc-900/70 border border-teal-600 rounded-2xl p-6 shadow-lg hover:shadow-teal-400/40 hover:border-teal-300 transition-all duration-300"
+              className="bg-zinc-900/70 border border-green-600 rounded-2xl p-6 shadow-lg hover:shadow-green-400/40 hover:border-green-300 transition-all duration-300"
             >
-              <h2 className="text-xl font-semibold mb-4 text-teal-300">Product Info</h2>
+              <h2 className="text-xl font-semibold mb-4 text-green-400">Product Info</h2>
               <AboutProduct barcode={scannedCode} />
             </div>
           ) : (

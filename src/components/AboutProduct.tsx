@@ -36,24 +36,24 @@ const AboutProduct: React.FC<AboutProductProps> = ({ barcode }) => {
   }
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 border border-teal-500/30 hover:shadow-teal-400/40 hover:border-teal-400 transition-all duration-300 shadow-lg backdrop-blur-md">
-      <h2 className="text-2xl font-bold text-teal-300 mb-4">📦 Product Details</h2>
+    <div className="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 border border-green-500/30 transition-all duration-300 shadow-lg backdrop-blur-md">
+      <h2 className="text-2xl font-bold text-green-400 mb-4">📦 Product Details</h2>
 
       <ul className="space-y-3 text-sm text-zinc-300 font-medium">
         <li>
-          <span className="text-teal-400 font-semibold">Name:</span>{' '}
+          <span className="text-green-400 font-semibold">Name:</span>{' '}
           {productInfo.product_name ?? <span className="text-zinc-500 italic">Unknown</span>}
         </li>
         <li>
-          <span className="text-teal-400 font-semibold">Packaging:</span>{' '}
+          <span className="text-green-400 font-semibold">Packaging:</span>{' '}
           {productInfo.packaging ?? <span className="text-zinc-500 italic">Unknown</span>}
         </li>
         <li>
-          <span className="text-teal-400 font-semibold">Weight:</span>{' '}
+          <span className="text-green-400 font-semibold">Weight:</span>{' '}
           {productInfo.product_quantity ?? productInfo.quantity ?? <span className="text-zinc-500 italic">N/A</span>}
         </li>
         <li>
-          <span className="text-teal-400 font-semibold">Brands:</span>{' '}
+          <span className="text-green-400 font-semibold">Brands:</span>{' '}
           {productInfo.brands ?? <span className="text-zinc-500 italic">Unknown</span>}
         </li>
       </ul>

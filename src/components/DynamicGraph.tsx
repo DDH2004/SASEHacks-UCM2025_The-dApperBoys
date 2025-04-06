@@ -23,8 +23,8 @@ const DynamicGraph: React.FC = () => {
   }, [z, x]);
 
   return (
-    <div className="bg-zinc-900 rounded-xl p-6 shadow-lg border border-purple-700 text-white space-y-4">
-      <h2 className="text-xl font-bold text-purple-300 mb-2">Dynamic Graph</h2>
+    <div className="bg-zinc-900 rounded-xl p-6 shadow-lg border border-green-500/30 hover:shadow-green-400/40 hover:border-green-400 text-white space-y-4">
+      <h2 className="text-xl font-bold text-green-400 mb-2">Dynamic Graph</h2>
 
       {/* Input for Z */}
       <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -50,7 +50,7 @@ const DynamicGraph: React.FC = () => {
               value={x}
               onChange={(e) => setX(parseInt(e.target.value))}
               disabled={z === null}
-              className="w-full mt-2 accent-purple-500 cursor-pointer disabled:opacity-40"
+              className="w-full mt-2 accent-green-500 cursor-pointer disabled:opacity-40"
             />
           </label>
         </div>
@@ -69,7 +69,7 @@ const DynamicGraph: React.FC = () => {
               <XAxis dataKey="x" stroke="#aaa" />
               <YAxis stroke="#aaa" />
               <Tooltip />
-              <Line type="monotone" dataKey="y" stroke="#a855f7" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="y" stroke="#22C55E" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         )}
