@@ -1,105 +1,62 @@
 #!/usr/bin/env python3
 """
-server.py
+server2.py
 
-Flask server providing endpoints for:
-  • POST /signup    — generate a new user wallet and password
-  • POST /signin    — authenticate and mint a token
-  • POST /api/validate — validate a barcode/image proof and mint a token
-
-Dependencies:
-  pip install flask flask-cors solana spl-token solders openfoodfacts
-
-Make sure walletGen.py, wallet_manager.py, and tokenGen.py (if used) are in the same folder.
+Flask server with endpoints:
+  • POST /signup         — generate wallet + password
+  • POST /signin         — authenticate and return wallet info + SPL balance
+  • POST /api/validate   — verify barcode is real, validate image, mint tokens based on recyclability
+  • GET  /wallet/<pubkey>— retrieve wallet info + SPL balance
 """
 
 import json
-import getpass
-import secrets
 import hashlib
 from datetime import datetime
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import openfoodfacts
 
 from solana.rpc.api import Client
-from solders.keypair import Keypair
-from spl.token.client import Token
-from spl.token.constants import TOKEN_PROGRAM_ID
-from solana.rpc.commitment import Confirmed
-from solana.rpc.types import TxOpts
 from solders.pubkey import Pubkey
-
-import openfoodfacts
 
 from walletGen import generate_wallet
 from wallet_manager import add_wallet, wallet_exists, get_wallet_info, verify_password
+from tokenGen import mint_spl_token, get_spl_balance
+
+import requests
 
 app = Flask(__name__)
 CORS(app)
 
-# Configuration
-LOCAL_RPC = "http://127.0.0.1:8899"
-MINT_AUTHORITY_FILE = "/Users/lalkattil/my-solana-wallet.json"
-MINT_ADDRESS = "CzMUHT5wpcF331PyEvquERyrMeEnTXLQxQyKirPvnNo2"
+def fetch_product(barcode_id: str):
+    """
+    Fetch product data via the OpenFoodFacts REST API.
+    Returns the 'product' dict if status == 1, else None.
+    """
+    url = f"https://world.openfoodfacts.org/api/v0/product/{barcode_id}.json"
+    resp = requests.get(url, timeout=5)
+    if resp.status_code != 200:
+        return None
+    data = resp.json()
+    if data.get("status") == 1:
+        return data["product"]
+    return None
 
-def generate_random_password(length: int = 16) -> str:
-    return secrets.token_urlsafe(length)
+def fetch_packaging_score(product: dict) -> int:
+    """Extract packaging ecoscore (0–100) from product dict."""
+    return product.get("ecoscore_data", {}) \
+                  .get("adjustments", {}) \
+                  .get("packaging", {}) \
+                  .get("value", 0)
 
-def load_keypair_from_file(filepath: str) -> Keypair:
-    with open(filepath, "r") as f:
-        secret = json.load(f)
-    return Keypair.from_bytes(bytes(secret))
-
-def mint_token(pubkey_str: str) -> str:
-    """Mint 1 token to the given wallet public key on the local validator."""
-    # Load mint authority
-    mint_auth = load_keypair_from_file(MINT_AUTHORITY_FILE)
-    client = Client(LOCAL_RPC)
-    token = Token(
-        conn=client,
-        pubkey=Pubkey.from_string(MINT_ADDRESS),
-        program_id=TOKEN_PROGRAM_ID,
-        payer=mint_auth,
-    )
-    ata = token.create_account(Pubkey.from_string(pubkey_str))
-    resp = token.mint_to(
-        dest=ata,
-        mint_authority=mint_auth,
-        amount=1,
-        opts=TxOpts(skip_preflight=False, preflight_commitment="confirmed"),
-    )
-    return str(resp.value)
-
-def barcode_handling(barcode_id: str) -> str:
-    """Fetch product info and generate a unique submission ID."""
-    api = openfoodfacts.API(user_agent="MyAwesomeApp/1.0")
-    product = api.product.get(barcode_id) or {}
-    name = product.get('product_name', 'unknown_product')
-    score = (
-        product
-        .get('ecoscore_data', {})
-        .get('adjustments', {})
-        .get('packaging', {})
-        .get('value', 0)
-    )
-    raw = f"{name}|{score}|{datetime.utcnow().isoformat()}"
-    return hashlib.sha256(raw.encode()).hexdigest()
+def map_score_to_tokens(score: int) -> int:
+    """Map a 0–100 score into 1–5 tokens."""
+    return min(5, max(1, score // 20 + 1))
 
 @app.route("/signup", methods=["POST"])
 def signup():
-    """Generate a new wallet and password for a user."""
-    wallet = generate_wallet()
-    password = generate_random_password()
-    wallet_file = f"wallet_{wallet.pubkey()}.json"
-
-    # Persist secret key
-    with open(wallet_file, "w") as f:
-        json.dump(list(wallet.to_bytes()), f)
-
-    # Store in DB
+    wallet, password, wallet_file = generate_wallet()
     add_wallet(str(wallet.pubkey()), wallet_file, password)
-
     return jsonify({
         "pubkey": str(wallet.pubkey()),
         "wallet_file": wallet_file,
@@ -108,63 +65,76 @@ def signup():
 
 @app.route("/signin", methods=["POST"])
 def signin():
-    """Authenticate user and mint a token."""
     data = request.get_json() or {}
-    pubkey   = data.get("pubkey")
-    password = data.get("password")
-    if not pubkey or not password:
-        return jsonify({"error":"pubkey and password required"}), 400
-    if not wallet_exists(pubkey):
-        return jsonify({"error":"wallet not found"}), 400
-    if not verify_password(pubkey, password):
-        return jsonify({"error":"invalid password"}), 400
-
-    info = get_wallet_info(pubkey)
-    tx_sig = mint_token(pubkey)
-    return jsonify({
-        "wallet_info": info,
-        "mint_tx": tx_sig
-    })
+    pk, pw = data.get("pubkey"), data.get("password")
+    if not pk or not pw:
+        return jsonify({"error":"pubkey & password required"}), 400
+    if not wallet_exists(pk):
+        return jsonify({"error":"wallet not found"}), 404
+    if not verify_password(pk, pw):
+        return jsonify({"error":"invalid password"}), 403
+    info    = get_wallet_info(pk)
+    spl_bal = get_spl_balance(pk)
+    return jsonify({"wallet_info": info, "spl_balance": spl_bal})
 
 @app.route("/api/validate", methods=["POST"])
 def validate_and_mint():
-    """
-    Validate a barcode proof and mint a token.
-    Expects multipart/form-data:
-      - barcode_id (str)
-      - image (file)
-      - pubkey (str)
-      - password (str)
-    """
-    form = request.form
-    files = request.files
-    for field in ("barcode_id","pubkey","password"):
-        if field not in form:
-            return jsonify({"error":f"Missing field '{field}'"}), 400
+    form, files = request.form, request.files
+    for f in ("barcode_id","pubkey","password"):
+        if f not in form:
+            return jsonify({"error":f"Missing {f}"}), 400
     if "image" not in files:
-        return jsonify({"error":"Missing image file"}), 400
+        return jsonify({"error":"Missing image"}), 400
 
     barcode_id = form["barcode_id"]
     pubkey     = form["pubkey"]
     password   = form["password"]
 
+    # 1) Authenticate
     if not wallet_exists(pubkey):
-        return jsonify({"error":"wallet not found"}), 400
+        return jsonify({"error":"wallet not found"}), 404
     if not verify_password(pubkey, password):
-        return jsonify({"error":"invalid credentials"}), 400
+        return jsonify({"error":"invalid credentials"}), 403
 
-    img = files["image"].read()
-    image_hash    = hashlib.sha256(img).hexdigest()
-    submission_id = barcode_handling(barcode_id)
-    mint_tx       = mint_token(pubkey)
+    # 2) Verify barcode is real
+    product = fetch_product(barcode_id)
+    if product is None:
+        return jsonify({"error":"invalid barcode"}), 400
+
+    # 3) Compute image hash
+    image_hash = hashlib.sha256(files["image"].read()).hexdigest()
+
+    # 4) Compute recyclability score & token count
+    score  = fetch_packaging_score(product)
+    tokens = map_score_to_tokens(score)
+
+    # 5) Unique submission ID
+    submission_id = hashlib.sha256(
+        f"{barcode_id}|{image_hash}|{datetime.utcnow().isoformat()}".encode()
+    ).hexdigest()
+
+    # 6) Mint tokens
+    mint_tx   = mint_spl_token(pubkey, submission_id, tokens)
+    spl_bal   = get_spl_balance(pubkey)
 
     return jsonify({
-        "status": "success",
-        "barcode_id": barcode_id,
-        "image_hash": image_hash,
-        "submission_id": submission_id,
-        "mint_tx": mint_tx
+        "status":          "success",
+        "barcode_id":      barcode_id,
+        "image_hash":      image_hash,
+        "packaging_score": score,
+        "tokens_minted":   tokens,
+        "submission_id":   submission_id,
+        "mint_tx":         mint_tx,
+        "spl_balance":     spl_bal
     })
 
-if __name__ == "__main__":
+@app.route("/wallet/<pubkey>", methods=["GET"])
+def wallet_info(pubkey):
+    if not wallet_exists(pubkey):
+        return jsonify({"error":"wallet not found"}), 404
+    info    = get_wallet_info(pubkey)
+    spl_bal = get_spl_balance(pubkey)
+    return jsonify({"wallet_info": info, "spl_balance": spl_bal})
+
+if __name__=="__main__":
     app.run(debug=True)
