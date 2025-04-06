@@ -26,6 +26,7 @@ from tokenGenVoting2 import mint_reward, get_reward_balance, REWARD_MINT
 app = Flask(__name__)
 CORS(app)
 
+@app.route("/api/proof", methods=["POST"])
 def fetch_product(barcode_id):
     url = f"https://world.openfoodfacts.org/api/v0/product/{barcode_id}.json"
     r = requests.get(url, timeout=5)

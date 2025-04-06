@@ -67,6 +67,7 @@ const AboutProduct: React.FC<AboutProductProps> = ({ barcode }) => {
           />
         </div>
       )}
+
     </div>
   );
 };
