@@ -12,6 +12,9 @@ const BarcodeScanner: React.FC = () => {
   const stopRef = useRef<() => void>(() => {});
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
+  const canScanRef = useRef(true); // Cooldown flag
+
+
 
   const captureImage = (): string | null => {
     const video = videoRef.current;
@@ -65,25 +68,28 @@ const BarcodeScanner: React.FC = () => {
 
     const reader = new BrowserMultiFormatReader(hints);
 
-    reader
-      .decodeFromVideoDevice(undefined, videoRef.current!, async (result, err, controls) => {
-        if (result) {
-          const barcode = result.getText();
-          console.log('✅ Scanned:', barcode);
-          setScannedBarcode(barcode);
-
-          const image = captureImage();
-          if (image) {
-            setCapturedImage(image);
-            await sendProof(barcode, image);
-          }
+    reader.decodeFromVideoDevice(undefined, videoRef.current!, async (result, err, controls) => {
+      if (result && canScanRef.current) {
+        canScanRef.current = false; // 🔒 lock scanning
+        const barcode = result.getText();
+        console.log('✅ Scanned:', barcode);
+        setScannedBarcode(barcode);
+    
+        const image = captureImage();
+        if (image) {
+          setCapturedImage(image);
+          await sendProof(barcode, image);
         }
-
-        stopRef.current = controls.stop;
-      })
-      .catch((err) => {
-        console.error('Failed to start scanner:', err);
-      });
+    
+        // 1 second cooldown before allowing next scan
+        setTimeout(() => {
+          canScanRef.current = true;
+        }, 1000);
+      }
+    
+      stopRef.current = controls.stop;
+    });
+    
 
     return () => {
       // stopRef.current?.();
