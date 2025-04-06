@@ -27,7 +27,7 @@ app = Flask(__name__)
 CORS(app)
 
 @app.route("/api/proof", methods=["POST"])
-def fetch_product(barcode_id):
+def proof(barcode_id):
     url = f"https://world.openfoodfacts.org/api/v0/product/{barcode_id}.json"
     r = requests.get(url, timeout=5)
     if r.status_code != 200:
@@ -80,7 +80,7 @@ def validate_and_award():
     if not verify_password(pk, pw):
         return jsonify({"error": "invalid credentials"}), 403
 
-    prod = fetch_product(barcode)
+    prod = proof(barcode)
     if not prod:
         return jsonify({"error": "invalid barcode"}), 400
 
