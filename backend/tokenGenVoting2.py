@@ -11,7 +11,9 @@ LOCAL_RPC = "http://127.0.0.1:8899"
 # Authority keypair stored in Mongo (must be upserted via your authority setup)
 MINT_AUTH_PUBKEY = "GckMqwD5e17U2tadgLm5TDsG6x41CpJdVhZkTSijtw1y"
 # Reward token mint address (created with spl-token create-token)
-REWARD_MINT = "2PnC8hp65m1pJZAm1jgx1rKynnY3LHAct3eGApHZNwdH"
+REWARD_MINT = "F7bcyQmc6WCinDdF1eLN81qJbW88wUb1N9zJP9WHEt9B"
+
+# Shyam pubkey- F7bcyQmc6WCinDdF1eLN81qJbW88wUb1N9zJP9WHEt9B
 
 def load_authority():
     auth = load_keypair_from_db(MINT_AUTH_PUBKEY)
