@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import BarcodeScanner from './BarcodeScanner';
 import AboutProduct from './AboutProduct';
 import DynamicGraph from './DynamicGraph';
-
+import UserBalance from './UserBalance';
 
 interface DashboardProps {
   wallet: string;
@@ -35,6 +35,9 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 sm:px-10 py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* User Balance Card */}
+          <UserBalance walletAddress={wallet} />
+          
           {/* Scanner */}
           <div
             className="bg-zinc-900/70 border border-green-700 rounded-2xl p-6 shadow-lg hover:shadow-green-500/50 hover:border-green-400 transition-all duration-300"
