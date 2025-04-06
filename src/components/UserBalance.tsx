@@ -25,9 +25,14 @@ const UserBalance: React.FC<UserBalanceProps> = ({ walletAddress }) => {
       try {
         setLoading(true);
         
-        // Use your existing endpoint
-        const response = await fetch(`/wallet/${walletAddress}`);
-        if (!response.ok) throw new Error('Failed to fetch balance data');
+        // Use full URL to backend server
+        const response = await fetch(`http://localhost:8888/wallet/${walletAddress}`);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
+          throw new Error(`Failed to fetch balance data: ${response.status}`);
+        }
         
         const data = await response.json();
         
@@ -39,7 +44,7 @@ const UserBalance: React.FC<UserBalanceProps> = ({ walletAddress }) => {
         
       } catch (err) {
         console.error('Error fetching balance data:', err);
-        setError('Failed to load your balance. Please try again later.');
+        setError(`Failed to load your balance: ${err.message}`);
       } finally {
         setLoading(false);
       }
