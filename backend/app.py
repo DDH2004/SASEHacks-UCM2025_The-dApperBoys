@@ -16,6 +16,9 @@ CORS(app)
 submissions = []
 
 def barcode_handling(barcode_id):
+    """
+    Create a submission hash for the blockchain
+    """
     api = openfoodfacts.API(user_agent="MyAwesomeApp/1.0")
     product = api.product.get(barcode_id)
     name = product.get('product_name', 'idk random carbs ig')
