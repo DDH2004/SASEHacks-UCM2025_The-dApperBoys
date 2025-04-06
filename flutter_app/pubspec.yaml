@@ -37,6 +37,7 @@ dependencies:
   zxing_scanner: ^1.0.0
   image_picker: ^1.1.2
   camera: ^0.10.6 # Use the latest compatible version
+  http: ^0.13.6
 
 dev_dependencies:
   flutter_test:

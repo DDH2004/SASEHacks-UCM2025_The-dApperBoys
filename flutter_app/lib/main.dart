@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:zxing_scanner/zxing_scanner.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -119,6 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
           _scanResult = results.first.text;
           // Optional: Stop camera when barcode is found
           _toggleCameraView();
+          _callApi(_scanResult, image);
         });
       }
     } catch (e) {
@@ -128,6 +130,51 @@ class _MyHomePageState extends State<MyHomePage> {
       _processing = false;
     }
   }
+
+  Future<void> _callApi(String barcode, XFile? image) async {
+    try {
+      // For Android emulator, use 10.0.2.2 instead of localhost
+      // For physical devices, use your computer's actual IP address
+      final url = Uri.parse('http://10.0.2.2:5000/api/proof');
+      
+      // Create a multipart request (required for file uploads)
+      var request = http.MultipartRequest('POST', url);
+      
+      // Add barcode_id as a field
+      request.fields['barcode_id'] = barcode;
+      
+      // Add the image as a file
+      if (image != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('image', image.path),
+        );
+      }
+      
+      // Send the request
+      var streamedResponse = await request.send();
+      
+      // Get response as string
+      var response = await http.Response.fromStream(streamedResponse);
+      
+      if (response.statusCode == 200) {
+        log("API response: ${response.body}");
+        setState(() {
+          _scanResult = "✅Barcode: $barcode";
+        });
+      } else {
+        log("Error: ${response.statusCode} - ${response.body}");
+        setState(() {
+          _scanResult = "API Error: ${response.statusCode}";
+        });
+      }
+    } catch (e) {
+      log("Exception when calling API: $e");
+      setState(() {
+        _scanResult = "Error: $e";
+      });
+    }
+  }
+
 
   // Toggle camera view on/off
   void _toggleCameraView() {
