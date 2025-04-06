@@ -96,10 +96,10 @@ const WebGLBackground: React.FC = () => {
     const bitcoinGeometry = new THREE.TorusGeometry(0.3, 0.1, 16, 30);
     const bitcoinMaterial = new THREE.MeshStandardMaterial({
       color: 0x2f4c39, // Dark green
-      metalness: 0.7,
+      metalness: 0.5,
       roughness: 0.2,
       emissive: 0x1e3a29,
-      emissiveIntensity: 0.3
+      emissiveIntensity: 1
     });
     
     const bitcoin = new THREE.Mesh(bitcoinGeometry, bitcoinMaterial);
