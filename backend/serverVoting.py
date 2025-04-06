@@ -16,10 +16,15 @@ from tokenGenVoting import (
     load_authority, PRIMARY_MINT, REWARD_MINT
 )
 
+from solders.pubkey import Pubkey
+
 from solana.rpc.api import Client
 from spl.token.client import Token
 from spl.token.constants import TOKEN_PROGRAM_ID
 from solders.pubkey import Pubkey
+
+from solana.rpc.types import MemcmpOpts
+
 
 app = Flask(__name__)
 CORS(app)
@@ -91,27 +96,46 @@ def validate_and_mint():
 @app.route("/distribute", methods=["GET"])
 def distribute_rewards():
     print("⚡ Distribute route triggered")
-    auth = load_authority()  # This will print the mint authority pubkey
+    auth = load_authority()
     client = Client("http://127.0.0.1:8899")
-    primary_token = Token(
-        conn=client,
-        pubkey=Pubkey.from_string(PRIMARY_MINT),
-        program_id=TOKEN_PROGRAM_ID,
-        payer=auth
-    )
 
-    accounts = primary_token.get_accounts()
-    holders, total_votes = {}, 0
-    for acct in accounts.value:
-        owner = str(acct.account.owner)
-        votes = int(acct.account.amount)
-        if votes > 0:
-            holders[owner] = votes
-            total_votes += votes
+    mint_pubkey = Pubkey.from_string(PRIMARY_MINT)
+
+    # Query all token accounts with this mint
+    resp = client.get_program_accounts(
+    TOKEN_PROGRAM_ID,
+    encoding="base64",  # <- this avoids JSON decoding errors
+    filters=[
+        MemcmpOpts(offset=0, bytes=str(mint_pubkey))
+    ]
+)
+
+
+
+
+    holders = {}
+    total_votes = 0
+
+    for acct in resp.value:
+        parsed_data = acct.account.data  # This is a tuple: (data, encoding)
+    
+    if isinstance(parsed_data, tuple) and parsed_data[1] == "jsonParsed":
+        info = parsed_data[0]["parsed"]["info"]
+        owner = info["owner"]
+        amount = int(info["tokenAmount"]["amount"])
+
+        if amount > 0:
+            holders[owner] = holders.get(owner, 0) + amount
+            total_votes += amount
+    else:
+        print("⚠️ Skipping account with unexpected data format")
+
+
 
     if total_votes == 0:
         return jsonify({"error": "no holders"}), 400
 
+    # Calculate each holder's share
     distribution = {}
     tokens_left = 100
     for owner, votes in holders.items():
@@ -127,6 +151,7 @@ def distribute_rewards():
         tokens_left -= 1
         idx += 1
 
+    # Mint the reward tokens
     reward_token = Token(
         conn=client,
         pubkey=Pubkey.from_string(REWARD_MINT),
@@ -144,6 +169,9 @@ def distribute_rewards():
         "distribution": tx_results,
         "reward_mint": REWARD_MINT
     })
+
+
+
 
 @app.route("/wallet/<pubkey>", methods=["GET"])
 def wallet_info(pubkey):
