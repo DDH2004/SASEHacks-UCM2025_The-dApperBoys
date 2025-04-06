@@ -3,6 +3,7 @@ import BarcodeScanner from './BarcodeScanner';
 import AboutProduct from './AboutProduct';
 import DynamicGraph from './DynamicGraph';
 import PopUp from './PopUp';
+import UserBalance from './UserBalance';  // Add this import
 
 interface DashboardProps {
   wallet: string;
@@ -14,6 +15,7 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
   const [pointsAwarded, setPointsAwarded] = useState<number | null>(null);
   const [tokens, setTokens] = useState<number | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);
+  const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);  // Add this line
 
   // Handle barcode scanning and API calls
   const handleScan = async (barcode: string) => {
@@ -40,6 +42,8 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
       
       // Update points from validate response
       setPointsAwarded(validateData.points_awarded);
+
+      setBalanceRefreshKey(prev => prev + 1);  // Add this line
 
       // Fetch updated wallet info
       const walletResponse = await fetch(`http://localhost:8888/wallet/${wallet}`);
@@ -99,6 +103,12 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
           )}
 
           <DynamicGraph />
+
+          {/* Add UserBalance component here */}
+          <UserBalance 
+            key={balanceRefreshKey}  // Force re-render on scan
+            walletAddress={wallet} 
+          />
         </div>
 
         {/* Points Awarded Pop-Up */}
