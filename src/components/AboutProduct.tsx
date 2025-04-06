@@ -27,11 +27,11 @@ const AboutProduct: React.FC<AboutProductProps> = ({ barcode }) => {
     fetchProduct();
   }, [barcode]);
 
-  if (!productInfo) return <p className="text-gray-400">🔍 Looking up product info...</p>;
+  if (!productInfo) return <p className="text-gray-400">Looking up product info...</p>;
 
   return (
     <div className="bg-zinc-800 p-4 rounded-lg shadow border border-zinc-700 text-white">
-      <h2 className="text-xl font-semibold mb-2">📦 About This Product</h2>
+      <h2 className="text-xl font-semibold mb-2">About This Product</h2>
       <p><strong>Name:</strong> {productInfo.product_name ?? 'Unknown'}</p>
       <p><strong>Carbon Footprint:</strong> {productInfo['carbon-footprint_100g'] ?? 'N/A'} g CO₂/100g</p>
       <p><strong>Packaging:</strong> {productInfo.packaging ?? 'Unknown'}</p>

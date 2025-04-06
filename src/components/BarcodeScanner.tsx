@@ -78,7 +78,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan }) => {
         const barcode = result.getText();
       
         setScannedBarcode(barcode);
-        onScan(barcode); // 👈 send it to parent!
+        onScan(barcode); 
       
         const image = captureImage();
         if (image) {
@@ -90,10 +90,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan }) => {
           canScanRef.current = true;
         }, 1000);
       }
+      else{
+        setScannedBarcode(("Error!")) 
+      }
       stopRef.current = controls.stop;
     });
     
-
     return () => {
       // stopRef.current?.();
     };
@@ -108,13 +110,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan }) => {
       {scannedBarcode && (
         <div className="text-green-400 text-center font-mono text-lg">
           ✅ Barcode: <strong>{scannedBarcode}</strong>
-        </div>
-      )}
-
-      {capturedImage && (
-        <div className="rounded border border-green-600 overflow-hidden max-w-full">
-          <img src={capturedImage} alt="Scanned Snapshot" className="w-full" />
-          <p className="text-sm text-gray-400 mt-2 text-center">📸 Snapshot captured at scan</p>
         </div>
       )}
     </div>
