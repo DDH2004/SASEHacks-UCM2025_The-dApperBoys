@@ -6,6 +6,7 @@ import hashlib
 from solana.rpc.api import Client
 from solders.keypair import Keypair
 import openfoodfacts
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -14,9 +15,19 @@ CORS(app)
 # In production, use a proper database
 submissions = []
 
-def off_api_handling(barcode_id):
+def barcode_handling(barcode_id):
+    """
+    Create a submission hash for the blockchain
+    """
     api = openfoodfacts.API(user_agent="MyAwesomeApp/1.0")
-    api.product.get(barcode_id)
+    product = api.product.get(barcode_id)
+    name = product.get('product_name', 'idk random carbs ig')
+    score = product.get('ecoscore_data', 0).get('adjustments', 0).get('packaging', 0).get('value', 0)
+    # score_str = str(score)
+    submission_id = hashlib.sha256(
+            f"{name}{score}{datetime.now()}".encode()
+        ).hexdigest()
+    return submission_id
 
 @app.route('/api/submit', methods=['POST'])
 def submit_proof():
