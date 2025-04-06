@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import BarcodeScanner from './BarcodeScanner';
 import AboutProduct from './AboutProduct';
+import DynamicGraph from './DynamicGraph';
+
 
 interface DashboardProps {
   wallet: string;
@@ -57,7 +59,9 @@ const Dashboard: React.FC<DashboardProps> = ({ wallet, onDisconnect }) => {
               <p>Scan a barcode to view product details.</p>
             </div>
           )}
-        </div>
+
+          <DynamicGraph />
+       </div>
       </main>
     </div>
   );
