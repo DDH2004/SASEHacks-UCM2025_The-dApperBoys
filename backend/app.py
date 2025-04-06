@@ -107,5 +107,34 @@ def receive_proof():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/submissions', methods=['GET'])
+def get_submissions():
+    """Get all recorded submissions"""
+    try:
+        # For a real app, you'd implement pagination
+        return jsonify({
+            'status': 'success',
+            'count': len(submissions),
+            'submissions': submissions
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/submissions/<submission_id>', methods=['GET'])
+def get_submission(submission_id):
+    """Get a specific submission by ID"""
+    try:
+        submission = next((s for s in submissions if s['id'] == submission_id), None)
+        
+        if not submission:
+            return jsonify({'error': 'Submission not found'}), 404
+            
+        return jsonify({
+            'status': 'success',
+            'submission': submission
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
