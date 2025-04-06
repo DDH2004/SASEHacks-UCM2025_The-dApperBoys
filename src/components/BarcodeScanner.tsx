@@ -110,7 +110,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onScan, walletId }) => 
 
       {scannedBarcode && (
         <div className="text-green-400 text-center font-mono text-lg">
-          ✅ Barcode: <strong>{scannedBarcode}</strong>
+          Barcode: <strong>{scannedBarcode}</strong>
         </div>
       )}
     </div>
