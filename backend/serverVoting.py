@@ -25,6 +25,8 @@ from solders.pubkey import Pubkey
 
 from solana.rpc.types import MemcmpOpts
 
+from db import submissions_collection, points_collection
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -62,7 +64,7 @@ def signin():
     })
 
 @app.route("/api/validate", methods=["POST"])
-def validate_and_mint():
+def validate_and_award_points():
     form, files = request.form, request.files
     for f in ("barcode_id", "pubkey", "password"):
         if f not in form: return jsonify({"error": f"Missing {f}"}), 400
@@ -80,18 +82,56 @@ def validate_and_mint():
 
     img_hash = hashlib.sha256(files["image"].read()).hexdigest()
     score = prod.get("ecoscore_data", {}).get("adjustments", {}).get("packaging", {}).get("value", 0)
-    tokens = map_score_to_tokens(score)
+    
+    # Calculate points instead of tokens
+    points = map_score_to_points(score)
     sub_id = hashlib.sha256(f"{b}|{img_hash}|{datetime.utcnow().isoformat()}".encode()).hexdigest()
-
-    tx_primary = mint_primary(pk, tokens)
-    primary = get_primary_balance(pk)
-
+    
+    # Store submission in MongoDB
+    submission_data = {
+        "submission_id": sub_id,
+        "barcode_id": b,
+        "image_hash": img_hash,
+        "wallet_address": pk,
+        "packaging_score": score,
+        "points_awarded": points,
+        "timestamp": datetime.utcnow().isoformat(),
+        "product_info": prod
+    }
+    submissions_collection.insert_one(submission_data)
+    
+    # Update user's points in MongoDB (using upsert for first-time users)
+    points_collection.update_one(
+        {"wallet_address": pk},
+        {"$inc": {"total_points": points}, 
+         "$setOnInsert": {"created_at": datetime.utcnow().isoformat()}},
+        upsert=True
+    )
+    
+    # Get updated point total
+    user_points = points_collection.find_one({"wallet_address": pk})
+    
     return jsonify({
-        "status": "success", "barcode_id": b, "image_hash": img_hash,
-        "packaging_score": score, "tokens_minted": tokens,
-        "submission_id": sub_id, "primary_mint_tx": tx_primary,
-        "primary_balance": primary
+        "status": "success", 
+        "barcode_id": b, 
+        "image_hash": img_hash,
+        "packaging_score": score, 
+        "points_awarded": points,
+        "submission_id": sub_id,
+        "total_points": user_points["total_points"]
     })
+
+def map_score_to_points(score):
+    """Map packaging score to points"""
+    # Customize this logic based on your scoring system
+    if score <= 0:
+        return 5  # Base points for any submission
+    elif score < 30:
+        return 10
+    elif score < 60:
+        return 25
+    else:
+        return 50
 
 @app.route("/distribute", methods=["GET"])
 def distribute_rewards():
@@ -167,10 +207,61 @@ def distribute_rewards():
         "reward_mint": REWARD_MINT
     })
 
-
-
-
-
+@app.route("/distribute-tokens", methods=["POST"])
+def distribute_tokens():
+    """Distribute tokens to wallets based on their points"""
+    # Verify admin access (implement proper authentication)
+    if request.headers.get('X-Admin-Key') != YOUR_ADMIN_KEY:
+        return jsonify({"error": "unauthorized"}), 403
+        
+    # Get all users with points
+    users_with_points = list(points_collection.find({
+        "total_points": {"$gt": 0}
+    }))
+    
+    tx_results = {}
+    
+    for user in users_with_points:
+        wallet_address = user["wallet_address"]
+        points = user["total_points"]
+        
+        # Convert points to tokens (100 tokens per user)
+        tokens_to_mint = 100
+        
+        # Mint tokens
+        owner_pubkey = Pubkey.from_string(wallet_address)
+        try:
+            ata = reward_token.create_associated_token_account(owner_pubkey)
+        except Exception:
+            ata = reward_token.get_associated_token_address(owner_pubkey)
+        
+        # Mint the tokens
+        reward_token.mint_to(ata, auth, tokens_to_mint)
+        
+        # Record the transaction
+        tx_results[wallet_address] = tokens_to_mint
+        
+        # Reset points to zero after token distribution
+        points_collection.update_one(
+            {"wallet_address": wallet_address},
+            {"$set": {"total_points": 0, "last_token_distribution": datetime.utcnow().isoformat()}}
+        )
+    
+    # Record the distribution event
+    distribution_data = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "distribution": tx_results,
+        "total_tokens_distributed": sum(tx_results.values())
+    }
+    db.token_distributions.insert_one(distribution_data)
+    
+    return jsonify({
+        "status": "success",
+        "wallets_rewarded": len(tx_results),
+        "distribution": tx_results,
+        "reward_mint": REWARD_MINT,
+        "total_tokens_distributed": sum(tx_results.values())
+    })
 
 @app.route("/wallet/<pubkey>", methods=["GET"])
 def wallet_info(pubkey):
@@ -179,6 +270,47 @@ def wallet_info(pubkey):
         "wallet_info": get_wallet_info(pubkey),
         "primary_balance": get_primary_balance(pubkey),
         "reward_balance": get_reward_balance(pubkey)
+    })
+
+@app.route("/points/<wallet_address>", methods=["GET"])
+def get_user_points(wallet_address):
+    """Get points for a specific wallet"""
+    if not wallet_exists(wallet_address):
+        return jsonify({"error": "wallet not found"}), 404
+        
+    user_points = points_collection.find_one({"wallet_address": wallet_address})
+    
+    if not user_points:
+        return jsonify({
+            "wallet_address": wallet_address,
+            "total_points": 0,
+            "submissions_count": 0
+        })
+    
+    # Count submissions for this wallet
+    submissions_count = submissions_collection.count_documents({"wallet_address": wallet_address})
+    
+    return jsonify({
+        "wallet_address": wallet_address,
+        "total_points": user_points.get("total_points", 0),
+        "submissions_count": submissions_count,
+        "created_at": user_points.get("created_at", ""),
+        "last_token_distribution": user_points.get("last_token_distribution", "")
+    })
+
+@app.route("/leaderboard", methods=["GET"])
+def get_points_leaderboard():
+    """Get top users by points"""
+    limit = int(request.args.get("limit", 10))
+    
+    leaderboard = list(points_collection.find(
+        {}, 
+        {"_id": 0, "wallet_address": 1, "total_points": 1}
+    ).sort("total_points", -1).limit(limit))
+    
+    return jsonify({
+        "leaderboard": leaderboard,
+        "updated_at": datetime.utcnow().isoformat()
     })
 
 if __name__ == "__main__":
