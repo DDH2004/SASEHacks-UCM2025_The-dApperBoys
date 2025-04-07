@@ -1,5 +1,5 @@
 # GreenProof - Blockchain Rewards for Sustainable Actions
-GreenProof is a blockchain-powered platform that incentivizes and verifies recycling activities. By scanning product barcodes and submitting proof of recycling, users earn points that can be converted to GreenTokens on the Solana blockchain.
+GreenProof is a blockchain-powered platform built on solana that incentivizes and verifies recycling activities. By scanning product barcodes and submitting proof of recycling, users earn points that can be converted to GreenTokens on the Solana blockchain using proof by voting. Example use distribute endpoint is called once a day to distrubute 100 solana across users who aquired recycle points that day. Points are reset everytime distribute is called so that people are incentivized to recycle more rather than sit on a stockpile on points.
 ## Features
 - **Barcode Verification**: Scan product barcodes to verify recyclability and material composition
 - **Points System**: Earn points based on environmental impact of recycled items
